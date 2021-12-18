@@ -1,6 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
+import random
 from loguru import logger
 from tqdm import tqdm
 
@@ -11,9 +12,9 @@ class GARCH:
     """
     Asset price simulated with a Generalized Auto-Regressive Conditional Heteroskedasticity (GARCH) model.
     """
-    def __init__(self, init_value: int, b: float = 0.4, c: float = 0.4):
+    def __init__(self, init_value: int, b: float = 0.3, c: float = 0.3):
         self.init_value = init_value
-        self.par_value = 120
+        self.par_value = init_value
         self.b = b  # ARCH coefficient
         self.c = c  # GARCH coefficient
         self.sigma0 = 0.0002
@@ -27,43 +28,30 @@ class GARCH:
         self.get_price_at_period(50)  # sim to period 50
         self.get_price_at_period(100)  # sim to period 100
     
-    def get_return_drift(self, price):
+    def _get_return_drift(self, price):
         """ Input cumulative return, output drifted price """
         # c_ret = 1 + c_ret
         # price = c_ret * self.init_value
-        bias_threshold = 0.06
-        bias_ratio = 1/(random.randint(5000, 12000))  # ratio of the % from par_value to bias
+        bias_threshold = 0.05
+        bias_ratio = 1/(random.randint(3000, 4000))  # ratio of the % from par_value to bias
         percent_diff = (price - self.par_value) / self.par_value
         if abs(percent_diff) > bias_threshold:
             # print(f"Biasing price {price} return: {(-percent_diff * bias_ratio)}")
             bias = (-percent_diff * bias_ratio)
-            bias = bias * np.random.normal(2)  # add some fun :)
-            if abs(percent_diff) > 6 * bias_threshold and random.randint(0, 499) == 0:
-                bias = bias * 60  # wheeeee
+            if random.randint(0, 1):
+                bias = bias * np.random.normal(2)  # add some fun :)
+            if abs(percent_diff) > 3 * bias_threshold and random.randint(0, 499) == 0:
+                bias = bias * 60
+            if abs(percent_diff) > 6 * bias_threshold and random.randint(0, 2499) == 0:
+                bias = bias * 300  # wheeeee
+                # bias = (-percent_diff * (0.1 + (0.1 * random.random())))
+                print(f"bias greatly increased to {bias}")
             if abs(percent_diff) > 8 * bias_threshold and random.randint(0, 99) == 0:
-                bias = bias * 2  # wheeeee
+                bias = bias * 20  # wheeeee
             self.total_bias_generated += abs(bias)
             return bias
         else:
             return 0
-    
-    # def _bias_price(self, price):
-    #     """ Slightly bias price towards equilibrium """
-    #     bias_threshold = 0.05
-    #     bias_ratio = 1/100  # ratio of the % from par_value to bias
-    #     percent_diff = (price - self.par_value) / self.par_value
-    #     if abs(percent_diff) > bias_threshold:
-    #         # price pressure towards equlibrium
-    #         return price * (1 - (percent_diff * bias_ratio))
-    #     else:
-    #         return price
-    
-    # def get_r_from_last(self, r: float, sig: float) -> tuple([float, float]):
-    #     last_r = r
-    #     last_sig = sig
-    #     new_sig = np.sqrt(self.a + self.b * last_r ** 2 + self.c * last_sig ** 2)
-    #     new_r = new_sig * np.random.normal(0, 1, 1)[0]
-    #     return new_r, new_sig
 
     def _get_eps_at_period(self, period) -> float:
         """ Generate self.eps values up to period """
@@ -76,29 +64,11 @@ class GARCH:
             self.eps = np.concatenate((old_eps, new_eps))
             return self.eps[period]
 
-    # def _sim_to_this_period(self, period):
-    #     try:
-    #         self.sigma[period]
-    #         return self.r[period]
-    #     except IndexError:
-    #         self._get_eps_at_period(period)
-    #         new_n = 1 + period - len(self.sigma)
-    #         old_sigma = self.sigma
-    #         self.sigma = np.concatenate((old_sigma, np.ones(new_n)*self.sigma0))
+    def par_value_set_trigger(self, period):
+        """ Override this function """
+        print("Override this function")
 
-    #         old_len = len(self.r)
-    #         old_r = self.r
-    #         self.r = np.concatenate((old_r, np.zeros(new_n)))
-
-    #         for i in range(old_len, period):
-    #             self.sigma[i] = np.sqrt(self.a + self.b * self.r[i-1] ** 2 + self.c * self.sigma[i-1] ** 2)
-    #             # self.eps[i] += return drift
-    #             self.r[i] = self.sigma[i] * self.eps[i]
-    #             bias = self.get_return_drift(cr[i])
-    #             # self.r[i] += self.get_return_drift(self.r)
-    #         return self.r[period]
-
-    def _get_r_at_period(self, period) -> float:
+    def _sim_to_period(self, period) -> float:
         """ Generate self.r and self.sigma values up to period """
         try:
             self.sigma[period]
@@ -119,9 +89,12 @@ class GARCH:
             self._price_history = np.concatenate((old_price_history, np.ones(new_n)))
 
             for i in range(old_len-1, period):
-                # if i == 4000:
-                #     self.par_value = 95
-                #     logger.warning(f"DEBUG: Setting par value to {self.par_value} at pd {i}")
+                if i % 1000 == 0:
+                    pv = self.par_value_set_trigger(period)
+                    if pv:
+                        self.par_value = pv
+                        # logger.warning(f"DEBUG: Setting par value to {self.par_value} at pd {i}")
+                    # self.par_value = self.init_value + (i/1000)
                 self.sigma[i] = np.sqrt(self.a + self.b * self.r[i-1] ** 2 + self.c * self.sigma[i-1] ** 2)
                 # self.eps[i] += return drift
                 if i % 2250 == 0:  # each week
@@ -129,34 +102,18 @@ class GARCH:
                 self.r[i] = self.sigma[i] * self.eps[i]
                 self.cr[i] = self.cr[i-1] + self.r[i]
                 last_price = self._price_history[i-1]
-                bias = self.get_return_drift(last_price)
+                bias = self._get_return_drift(last_price)
                 self.r[i] += bias
                 self.cr[i] += bias
                 self._price_history[i] = last_price * (1 + self.r[i])
-                # self.r[i] += self.get_return_drift(self.r)
+                # self.r[i] += self._get_return_drift(self.r)
             return self.r[period]
 
-    # def _get_cr_at_period(self, period) -> float:
-    #     """ TODO: Make this only calculate values it hasn't already """
-    #     try:
-    #         return self.cr[period]
-    #     except IndexError:
-    #         self._get_r_at_period(period)
-    #         self.cr = np.cumsum(self.r[:period+1]) + 1
-    #         return self.cr[period]
-
     def get_price_at_period(self, period: int) -> float:
-        """ TODO: Make this only calculate values it hasn't already """
         try:
             return self._price_history[period]
         except IndexError:
-            self._get_r_at_period(period)
-            # for r in self.r:
-            #     self._price_history.append((1 + r) * self._price_history[-1])
-            # Generate values up to period
-            # self._get_r_at_period(period)
-            # self._get_cr_at_period(period)
-            # self._price_history = self.cr * self.init_value
+            self._sim_to_period(period)
             return self._price_history[period]
         
 
@@ -184,7 +141,7 @@ class GARCH:
             #print(f"sigma is {sigma[i]}")
             r[i] = sigma[i] * eps[i]  # this period return
             cr[i] = cr[i-1] + r[i]
-            bias = self.get_return_drift(cr[i])
+            bias = self._get_return_drift(self.init_value * cr[i])
             if i % 1000 == 0 and bias > 0.01:
                 logger.warning(f"warn: bias is {round(bias, 4)}; cr[i] is {round(cr[i], 4)}, r[i] was {round(r[i], 4)}")
             r[i] += bias
@@ -221,7 +178,7 @@ if __name__ == '__main__':
     # rh = RobinhoodAPIHelper()
     # aapl_json = rh.get_info_by_symbol('AAPL')
 
-    b, c = 0.25, 0.3
+    b, c = 0.35, 0.2
     print(f"b={b}; c={c}")
     my_asset = GARCH(100, b=b, c=c)
     # print(my_asset.monte_carlo(it=100, n=86400))  # 14400 seconds is 4 hours, 86400 seconds is 1 day, 432000 seconds is 5 days

@@ -1,0 +1,6 @@
+numpy
+plotly
+pandas
+loguru
+tqdm
+nbformat
