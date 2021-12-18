@@ -1,6 +1,8 @@
 import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
+from loguru import logger
+from tqdm import tqdm
 
 DEBUG = True
 RETURN_RAND_CENTER = 0  # 0.005  # 0 for unbiased epsilon each period (std. dev of 1)
@@ -11,30 +13,35 @@ class GARCH:
     """
     def __init__(self, init_value: int, b: float = 0.4, c: float = 0.4):
         self.init_value = init_value
-        self.par_value = 110
+        self.par_value = 120
         self.b = b  # ARCH coefficient
         self.c = c  # GARCH coefficient
         self.sigma0 = 0.0002
         self.a = 0.0000002  # 0.0000002
-        self.eps = np.random.normal(RETURN_RAND_CENTER, 1, 5)  # init sims to length 5, later runs fn to sim to len 10
-        self.r = np.zeros(5)
-        self.cr = np.zeros(1)
-        self.sigma = np.ones(5) * self.sigma0
-        self._price_history = [self.init_value]
+        self.eps = np.random.normal(RETURN_RAND_CENTER, 1, 2)  # init sims to length 2, later runs fn to sim to len 10
+        self.r = np.zeros(2)
+        self.cr = np.zeros(2)
+        self.sigma = np.ones(2) * self.sigma0
+        self._price_history = np.ones(2) * self.init_value
         self.total_bias_generated = 0
         self.get_price_at_period(50)  # sim to period 50
         self.get_price_at_period(100)  # sim to period 100
     
-    def get_return_drift(self, c_ret):
+    def get_return_drift(self, price):
         """ Input cumulative return, output drifted price """
-        c_ret = 1 + c_ret
-        price = c_ret * self.init_value
-        bias_threshold = 0.05
-        bias_ratio = 1/100  # ratio of the % from par_value to bias
+        # c_ret = 1 + c_ret
+        # price = c_ret * self.init_value
+        bias_threshold = 0.06
+        bias_ratio = 1/(random.randint(5000, 12000))  # ratio of the % from par_value to bias
         percent_diff = (price - self.par_value) / self.par_value
         if abs(percent_diff) > bias_threshold:
             # print(f"Biasing price {price} return: {(-percent_diff * bias_ratio)}")
             bias = (-percent_diff * bias_ratio)
+            bias = bias * np.random.normal(2)  # add some fun :)
+            if abs(percent_diff) > 6 * bias_threshold and random.randint(0, 499) == 0:
+                bias = bias * 60  # wheeeee
+            if abs(percent_diff) > 8 * bias_threshold and random.randint(0, 99) == 0:
+                bias = bias * 2  # wheeeee
             self.total_bias_generated += abs(bias)
             return bias
         else:
@@ -69,11 +76,34 @@ class GARCH:
             self.eps = np.concatenate((old_eps, new_eps))
             return self.eps[period]
 
+    # def _sim_to_this_period(self, period):
+    #     try:
+    #         self.sigma[period]
+    #         return self.r[period]
+    #     except IndexError:
+    #         self._get_eps_at_period(period)
+    #         new_n = 1 + period - len(self.sigma)
+    #         old_sigma = self.sigma
+    #         self.sigma = np.concatenate((old_sigma, np.ones(new_n)*self.sigma0))
+
+    #         old_len = len(self.r)
+    #         old_r = self.r
+    #         self.r = np.concatenate((old_r, np.zeros(new_n)))
+
+    #         for i in range(old_len, period):
+    #             self.sigma[i] = np.sqrt(self.a + self.b * self.r[i-1] ** 2 + self.c * self.sigma[i-1] ** 2)
+    #             # self.eps[i] += return drift
+    #             self.r[i] = self.sigma[i] * self.eps[i]
+    #             bias = self.get_return_drift(cr[i])
+    #             # self.r[i] += self.get_return_drift(self.r)
+    #         return self.r[period]
+
     def _get_r_at_period(self, period) -> float:
         """ Generate self.r and self.sigma values up to period """
         try:
             self.sigma[period]
-            return self.r[period]
+            self.r[period]
+            self.cr[period]
         except IndexError:
             self._get_eps_at_period(period)
             new_n = 1 + period - len(self.sigma)
@@ -82,23 +112,38 @@ class GARCH:
 
             old_len = len(self.r)
             old_r = self.r
+            old_cr = self.cr
+            old_price_history = self._price_history
             self.r = np.concatenate((old_r, np.zeros(new_n)))
+            self.cr = np.concatenate((old_cr, np.zeros(new_n)))
+            self._price_history = np.concatenate((old_price_history, np.ones(new_n)))
 
-            for i in range(old_len, period):
+            for i in range(old_len-1, period):
+                # if i == 4000:
+                #     self.par_value = 95
+                #     logger.warning(f"DEBUG: Setting par value to {self.par_value} at pd {i}")
                 self.sigma[i] = np.sqrt(self.a + self.b * self.r[i-1] ** 2 + self.c * self.sigma[i-1] ** 2)
                 # self.eps[i] += return drift
+                if i % 2250 == 0:  # each week
+                    self.sigma[i] = self.sigma[i] * 8
                 self.r[i] = self.sigma[i] * self.eps[i]
+                self.cr[i] = self.cr[i-1] + self.r[i]
+                last_price = self._price_history[i-1]
+                bias = self.get_return_drift(last_price)
+                self.r[i] += bias
+                self.cr[i] += bias
+                self._price_history[i] = last_price * (1 + self.r[i])
                 # self.r[i] += self.get_return_drift(self.r)
             return self.r[period]
 
-    def _get_cr_at_period(self, period) -> float:
-        """ TODO: Make this only calculate values it hasn't already """
-        try:
-            return self.cr[period]
-        except IndexError:
-            self._get_r_at_period(period)
-            self.cr = np.cumsum(self.r[:period+1]) + 1
-            return self.cr[period]
+    # def _get_cr_at_period(self, period) -> float:
+    #     """ TODO: Make this only calculate values it hasn't already """
+    #     try:
+    #         return self.cr[period]
+    #     except IndexError:
+    #         self._get_r_at_period(period)
+    #         self.cr = np.cumsum(self.r[:period+1]) + 1
+    #         return self.cr[period]
 
     def get_price_at_period(self, period: int) -> float:
         """ TODO: Make this only calculate values it hasn't already """
@@ -106,8 +151,8 @@ class GARCH:
             return self._price_history[period]
         except IndexError:
             self._get_r_at_period(period)
-            for r in self.r:
-                self._price_history.append(r * self._price_history[-1])
+            # for r in self.r:
+            #     self._price_history.append((1 + r) * self._price_history[-1])
             # Generate values up to period
             # self._get_r_at_period(period)
             # self._get_cr_at_period(period)
@@ -120,7 +165,7 @@ class GARCH:
         fig = go.Figure(
             data=go.Scatter(
                 x=[i for i in range(period)],
-                y=[p for p in self.cr],
+                y=[p for p in self._price_history],
                 mode='lines',
                 line_shape='spline'
             )
@@ -140,20 +185,21 @@ class GARCH:
             r[i] = sigma[i] * eps[i]  # this period return
             cr[i] = cr[i-1] + r[i]
             bias = self.get_return_drift(cr[i])
-            if i % 400 == 0 and bias > 0:
-                print(f"info: bias is {round(bias, 4)}; cr[i] is {round(cr[i], 4)}, r[i] was {round(r[i], 4)}")
+            if i % 1000 == 0 and bias > 0.01:
+                logger.warning(f"warn: bias is {round(bias, 4)}; cr[i] is {round(cr[i], 4)}, r[i] was {round(r[i], 4)}")
             r[i] += bias
             cr[i] += bias
         # cr = np.cumsum(r) + 1  # cumulative returns
         return cr[n-1]
     
     def monte_carlo(self, it: int = 100, n: int = 3600) -> dict:
-        print(f"Simulating {it} outcomes of length {n} - {n*it} total periods")
+        logger.info(f"Simulating {it} outcomes of length {n} - {n*it} total periods...")
         cr_list = []
-        for i in range(it):
-            if i%25 == 0 and DEBUG:
-                print(i)
+        for i in tqdm(range(it)):  # tqdm() to make a loading bar
+            # if i%25 == 0 and DEBUG:
+            #     logger.info(f"{i}/{it} done")
             cr_list.append(self.simulate_price(n=n))
+        logger.success("Done!")
         cr_list = [(x)*100 for x in cr_list]
         returns = {
             'iterations': it,
@@ -182,15 +228,15 @@ if __name__ == '__main__':
     # 14400 minutes is 10 days tho, 13680 in 2 months
     # 450 trading minutes per day, 2250 per week, 9000 per month, 36000 per quarter
     # for period=5min; 90 for 1 trading day, 450/wk, 1800/month, 21600/yr
-    ma_mc = my_asset.monte_carlo(it=100, n=9000)
-    print(ma_mc)
+    # ma_mc = my_asset.monte_carlo(it=100, n=9000)
+    # print(ma_mc)
 
-    b, c = 0.25, 0.2
-    print(f"b={b}; c={c}")
-    another_asset = GARCH(100, b=b, c=c)
-    print(another_asset.monte_carlo(it=100, n=9000))
+    # b, c = 0.25, 0.2
+    # print(f"b={b}; c={c}")
+    # another_asset = GARCH(100, b=b, c=c)
+    # print(another_asset.monte_carlo(it=100, n=9000))
 
-    b, c = 0.15, 0.2
-    print(f"b={b}; c={c}")
-    yet_another_asset = GARCH(100, b=b, c=c)
-    print(yet_another_asset.monte_carlo(it=100, n=9000))
+    # b, c = 0.15, 0.2
+    # print(f"b={b}; c={c}")
+    # yet_another_asset = GARCH(100, b=b, c=c)
+    # print(yet_another_asset.monte_carlo(it=100, n=9000))
