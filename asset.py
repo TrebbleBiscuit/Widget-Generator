@@ -32,21 +32,29 @@ class GARCH:
         """ Input cumulative return, output drifted price """
         # c_ret = 1 + c_ret
         # price = c_ret * self.init_value
-        bias_threshold = 0.05
-        bias_ratio = 1/(random.randint(3000, 4000))  # ratio of the % from par_value to bias
+        ## These are some defaults, should probably make them variable
+        self.bias_threshold = 0.05  # % price difference from par before bias begins
+        self.bias_ratio = 1/(random.randint(3000, 4000))  # ratio of the % from par_value to bias
+        #
         percent_diff = (price - self.par_value) / self.par_value
-        if abs(percent_diff) > bias_threshold:
-            # print(f"Biasing price {price} return: {(-percent_diff * bias_ratio)}")
-            bias = (-percent_diff * bias_ratio)
+        if abs(percent_diff) > self.bias_threshold:
+            if percent_diff < 0:
+                adjusted_diff = percent_diff + self.bias_threshold
+            else:
+                adjusted_diff = percent_diff - self.bias_threshold
+            # print(f"Biasing price {price} return: {(-percent_diff * self.bias_ratio)}")
+            # experimenting with this to try and make the bias more subtle:
+            bias = (-adjusted_diff * self.bias_ratio)
+            # bias = (-percent_diff * self.bias_ratio)
             if random.randint(0, 1):
                 bias = bias * np.random.normal(2)  # add some fun :)
-            if abs(percent_diff) > 3 * bias_threshold and random.randint(0, 499) == 0:
+            if abs(percent_diff) > 3 * self.bias_threshold and random.randint(0, 499) == 0:
                 bias = bias * 60
-            if abs(percent_diff) > 6 * bias_threshold and random.randint(0, 2499) == 0:
+            if abs(percent_diff) > 6 * self.bias_threshold and random.randint(0, 2499) == 0:
                 bias = bias * 300  # wheeeee
                 # bias = (-percent_diff * (0.1 + (0.1 * random.random())))
                 print(f"bias greatly increased to {bias}")
-            if abs(percent_diff) > 8 * bias_threshold and random.randint(0, 99) == 0:
+            if abs(percent_diff) > 8 * self.bias_threshold and random.randint(0, 99) == 0:
                 bias = bias * 20  # wheeeee
             self.total_bias_generated += abs(bias)
             return bias
