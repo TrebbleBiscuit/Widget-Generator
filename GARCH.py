@@ -75,6 +75,7 @@ class GARCH:
     def par_value_set_trigger(self, period):
         """ Override this function """
         print("Override this function")
+        self.par_value = self._price_history[-1]  # effectively disable bias
 
     def _sim_to_period(self, period) -> float:
         """ Generate self.r and self.sigma values up to period """

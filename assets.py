@@ -1,5 +1,5 @@
 from typing import Union
-from asset import GARCH
+from GARCH import GARCH
 
 
 class Asset(GARCH):
@@ -10,7 +10,8 @@ class Asset(GARCH):
         # self._price = [init_value]  # _price is a list of prices
     
     def par_value_set_trigger(self, period):
-        return 100
+        pass
+        # return 100
         # if period % 1000 == 0:
         #     return self.init_value + (period/1000)
 
@@ -43,50 +44,47 @@ class Asset(GARCH):
     #     return self._eq_price
 
 
-my_asset = Asset(b = 0.25, c = 0.2)
-my_asset.gen_price_figure(9000)
-
-
-
 class RawResource(Asset):
     def __init__(self):
         super().__init__()
 
-class Obtainium(RawResource):
-    def __init__(self):
-        super().__init__(init_value = 100, b = 0.25, c = 0.2)
+# class Obtainium(RawResource):
+#     def __init__(self):
+#         super().__init__(init_value = 100, b = 0.25, c = 0.2)
 
-class Eludium(RawResource):
-    def __init__(self):
-        super().__init__(init_value = 500, b = 0.35, c = 0.25)
+# class Eludium(RawResource):
+#     def __init__(self):
+#         super().__init__(init_value = 500, b = 0.35, c = 0.25)
 
-class Unobtainium(RawResource):
-    def __init__(self):
-        super().__init__(init_value = 20000, b = 0.4, c = 0.4)
+# class Unobtainium(RawResource):
+#     def __init__(self):
+#         super().__init__(init_value = 20000, b = 0.4, c = 0.4)
 
 
 class IntermediateProduct(Asset):
     def __init__(self):
         super().__init__()
 
-class Widget(IntermediateProduct):
-    def __init__(self):
-        super().__init__()
+# class Widget(IntermediateProduct):
+#     def __init__(self):
+#         super().__init__()
 
-class Gizmo(IntermediateProduct):
-    def __init__(self):
-        super().__init__()
+# class Gizmo(IntermediateProduct):
+#     def __init__(self):
+#         super().__init__()
 
 
 class FinalGood(Asset):
     def __init__(self):
         super().__init__()
 
-class Doohickey(FinalGood):
-    def __init__(self):
-        super().__init__()
+# class Doohickey(FinalGood):
+#     def __init__(self):
+#         super().__init__()
 
-class Gadget(FinalGood):
-    def __init__(self):
-        super().__init__()
+# class Gadget(FinalGood):
+#     def __init__(self):
+#         super().__init__()
 
+my_asset = Asset(b = 0.25, c = 0.2)
+my_asset.gen_price_figure(21600)
