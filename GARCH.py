@@ -29,7 +29,9 @@ class GARCH:
         self.get_price_at_period(100)  # sim to period 100
     
     def _get_return_drift(self, price):
-        """ Input cumulative return, output drifted price """
+        """ Input cumulative return, output price bias """
+        if not self.par_value:
+            return 0
         # c_ret = 1 + c_ret
         # price = c_ret * self.init_value
         ## These are some defaults, should probably make them variable
@@ -37,29 +39,28 @@ class GARCH:
         self.bias_ratio = 1/(random.randint(3000, 4000))  # ratio of the % from par_value to bias
         #
         percent_diff = (price - self.par_value) / self.par_value
-        if abs(percent_diff) > self.bias_threshold:
-            if percent_diff < 0:
-                adjusted_diff = percent_diff + self.bias_threshold
-            else:
-                adjusted_diff = percent_diff - self.bias_threshold
-            # print(f"Biasing price {price} return: {(-percent_diff * self.bias_ratio)}")
-            # experimenting with this to try and make the bias more subtle:
-            bias = (-adjusted_diff * self.bias_ratio)
-            # bias = (-percent_diff * self.bias_ratio)
-            if random.randint(0, 1):
-                bias = bias * np.random.normal(2)  # add some fun :)
-            if abs(percent_diff) > 3 * self.bias_threshold and random.randint(0, 499) == 0:
-                bias = bias * 60
-            if abs(percent_diff) > 6 * self.bias_threshold and random.randint(0, 2499) == 0:
-                bias = bias * 300  # wheeeee
-                # bias = (-percent_diff * (0.1 + (0.1 * random.random())))
-                print(f"bias greatly increased to {bias}")
-            if abs(percent_diff) > 8 * self.bias_threshold and random.randint(0, 99) == 0:
-                bias = bias * 20  # wheeeee
-            self.total_bias_generated += abs(bias)
-            return bias
-        else:
+        if abs(percent_diff) < self.bias_threshold:
             return 0
+        if percent_diff < 0:
+            adjusted_diff = percent_diff + self.bias_threshold
+        else:
+            adjusted_diff = percent_diff - self.bias_threshold
+        # print(f"Biasing price {price} return: {(-percent_diff * self.bias_ratio)}")
+        # experimenting with this to try and make the bias more subtle:
+        bias = (-adjusted_diff * self.bias_ratio)
+        # bias = (-percent_diff * self.bias_ratio)
+        if random.randint(0, 1):
+            bias = bias * np.random.normal(2)  # add some fun :)
+        if abs(percent_diff) > 3 * self.bias_threshold and random.randint(0, 499) == 0:
+            bias = bias * 60
+        if abs(percent_diff) > 6 * self.bias_threshold and random.randint(0, 2499) == 0:
+            bias = bias * 300  # wheeeee
+            # bias = (-percent_diff * (0.1 + (0.1 * random.random())))
+            logger.debug(f"bias greatly increased to {bias}")
+        if abs(percent_diff) > 8 * self.bias_threshold and random.randint(0, 99) == 0:
+            bias = bias * 20  # wheeeee
+        self.total_bias_generated += abs(bias)
+        return bias
 
     def _get_eps_at_period(self, period) -> float:
         """ Generate self.eps values up to period """
@@ -75,7 +76,9 @@ class GARCH:
     def par_value_set_trigger(self, period):
         """ Override this function """
         print("Override this function")
-        self.par_value = self._price_history[-1]  # effectively disable bias
+        logger.info(f"Setting par value to {self._price_history[period-1]}")
+        # set current price as par value
+        self.par_value = self._price_history[period-1]
 
     def _sim_to_period(self, period) -> float:
         """ Generate self.r and self.sigma values up to period """
@@ -97,12 +100,13 @@ class GARCH:
             self.cr = np.concatenate((old_cr, np.zeros(new_n)))
             self._price_history = np.concatenate((old_price_history, np.ones(new_n)))
 
-            for i in range(old_len-1, period):
+            for i in range(old_len-1, period+1):
                 if i % 1000 == 0:
-                    pv = self.par_value_set_trigger(period)
-                    if pv:
-                        self.par_value = pv
-                        # logger.warning(f"DEBUG: Setting par value to {self.par_value} at pd {i}")
+                    pv = self.par_value_set_trigger(i)
+                    # this method sets, no need for the following
+                    # if pv:
+                    #     self.par_value = pv
+                    #     logger.warning(f"DEBUG: Setting par value to {self.par_value} at pd {i}")
                     # self.par_value = self.init_value + (i/1000)
                 self.sigma[i] = np.sqrt(self.a + self.b * self.r[i-1] ** 2 + self.c * self.sigma[i-1] ** 2)
                 # self.eps[i] += return drift
@@ -124,6 +128,9 @@ class GARCH:
         except IndexError:
             self._sim_to_period(period)
             return self._price_history[period]
+    
+    def get_next_price(self) -> float:
+        return self.get_price_at_period(period=len(self._price_history))
         
 
     def gen_price_figure(self, period: int) -> go.Figure:
