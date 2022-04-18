@@ -75,8 +75,8 @@ class GARCH:
 
     def par_value_set_trigger(self, period):
         """ Override this function """
-        print("Override this function")
-        logger.info(f"Setting par value to {self._price_history[period-1]}")
+        # print("Override this function")
+        logger.info(f"Setting par value to {self._price_history[period-1]} at period {period}")
         # set current price as par value
         self.par_value = self._price_history[period-1]
 
@@ -133,12 +133,13 @@ class GARCH:
         return self.get_price_at_period(period=len(self._price_history))
         
 
-    def gen_price_figure(self, period: int) -> go.Figure:
-        self.get_price_at_period(period)  # make sure we've got the data up to that period
+    def gen_price_figure(self, start_period:int, end_period: int) -> go.Figure:
+        """like range(), start is inclusive and end is exclusive"""
+        self.get_price_at_period(end_period)  # make sure we've got the data up to that period
         fig = go.Figure(
             data=go.Scatter(
-                x=[i for i in range(period)],
-                y=[p for p in self._price_history],
+                x=[i for i in range(start_period, end_period)],
+                y=[p for p in self._price_history[start_period:end_period]],
                 mode='lines',
                 line_shape='spline'
             )
