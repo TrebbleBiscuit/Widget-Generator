@@ -5,14 +5,13 @@ import random
 from loguru import logger
 from tqdm import tqdm
 
-DEBUG = True
 RETURN_RAND_CENTER = 0  # 0.005  # 0 for unbiased epsilon each period (std. dev of 1)
 
 class GARCH:
     """
     Asset price simulated with a Generalized Auto-Regressive Conditional Heteroskedasticity (GARCH) model.
     """
-    def __init__(self, init_value: int, b: float = 0.3, c: float = 0.3):
+    def __init__(self, init_value: int = 100, b: float = 0.3, c: float = 0.3):
         self.init_value = init_value
         self.par_value = init_value
         self.b = b  # ARCH coefficient
@@ -25,8 +24,7 @@ class GARCH:
         self.sigma = np.ones(2) * self.sigma0
         self._price_history = np.ones(2) * self.init_value
         self.total_bias_generated = 0
-        self.get_price_at_period(50)  # sim to period 50
-        self.get_price_at_period(100)  # sim to period 100
+        self.get_price(100)  # sim to period 100
     
     def _get_return_drift(self, price):
         """ Input cumulative return, output price bias """
@@ -63,7 +61,7 @@ class GARCH:
         return bias
 
     def _get_eps_at_period(self, period) -> float:
-        """ Generate self.eps values up to period """
+        """ Generate epsilon values up to period """
         try:
             return self.eps[period]
         except IndexError:
@@ -83,6 +81,7 @@ class GARCH:
     def _sim_to_period(self, period) -> float:
         """ Generate self.r and self.sigma values up to period """
         try:
+            # see if the data already exists
             self.sigma[period]
             self.r[period]
             self.cr[period]
@@ -122,7 +121,9 @@ class GARCH:
                 # self.r[i] += self._get_return_drift(self.r)
             return self.r[period]
 
-    def get_price_at_period(self, period: int) -> float:
+    def get_price(self, period: int = None) -> float:
+        if period is None:
+            period = len(self._price_history) - 1
         try:
             return self._price_history[period]
         except IndexError:
@@ -130,12 +131,12 @@ class GARCH:
             return self._price_history[period]
     
     def get_next_price(self) -> float:
-        return self.get_price_at_period(period=len(self._price_history))
+        return self.get_price()
         
 
-    def gen_price_figure(self, start_period:int, end_period: int) -> go.Figure:
+    def gen_price_figure(self, start_period: int, end_period: int) -> go.Figure:
         """like range(), start is inclusive and end is exclusive"""
-        self.get_price_at_period(end_period)  # make sure we've got the data up to that period
+        self.get_price(end_period)  # make sure we've got the data up to that period
         fig = go.Figure(
             data=go.Scatter(
                 x=[i for i in range(start_period, end_period)],
@@ -170,8 +171,6 @@ class GARCH:
         logger.info(f"Simulating {it} outcomes of length {n} - {n*it} total periods...")
         cr_list = []
         for i in tqdm(range(it)):  # tqdm() to make a loading bar
-            # if i%25 == 0 and DEBUG:
-            #     logger.info(f"{i}/{it} done")
             cr_list.append(self.simulate_price(n=n))
         logger.success("Done!")
         cr_list = [(x)*100 for x in cr_list]

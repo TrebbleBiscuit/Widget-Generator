@@ -4,7 +4,8 @@ from GARCH import GARCH
 class InsufficientResources(Exception):
     pass
 
-class NoRecipe(Exception)
+class NoRecipe(Exception):
+    pass
 
 @dataclass()
 class AssetQty:
@@ -30,13 +31,13 @@ class AssetPortfolio():
     def purchase_asset(self, asset_name: str, qty: int):
         """Purchase a number of assets at the current market price"""
         asset = self.productive_assets[asset_name]
-        price = asset.get_price_at_period(period=len(asset._price_history))
+        price = asset.get_price()
         if self.money < price * qty:
             raise InsufficientResources("Not enough money to purchase {qty}x {asset_name}")
         self.money -= (price * qty)
         self.productive_assets[asset_name].qty -= qty
 
-    def produce_asset(asset_name: str, qty: int):
+    def produce_asset(self, asset_name: str, qty: int):
         """produce a particular asset, consuming stockpiled resources
         TODO: buy them at current market price, maybe every resource has an autobuy setting?
         """
@@ -63,8 +64,8 @@ class ProductiveAsset(GARCH):
     
     They inheret from GARCH to simulate a market you can buy/sell them on"""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.recipe = None
         self._qty = 0
     
