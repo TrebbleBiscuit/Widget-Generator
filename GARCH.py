@@ -125,10 +125,11 @@ class GARCH:
         if period is None:
             period = len(self._price_history) - 1
         try:
-            return self._price_history[period]
+            price = self._price_history[period]
         except IndexError:
             self._sim_to_period(period)
-            return self._price_history[period]
+            price = self._price_history[period]
+        return price.tolist()  # convert to native python type (float)
     
     def get_next_price(self) -> float:
         return self.get_price()

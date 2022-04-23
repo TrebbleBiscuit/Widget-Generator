@@ -15,7 +15,6 @@ class AssetQty:
 class AssetPortfolio():
     """Container for a bunch of assets"""
     def __init__(self):
-        productive_asset_names = ["obtainium", "eludium", "unobtainium", "widget", "gizmo", "doohickey", "gadget"]
         self.money = 1000
         self.productive_assets = {
             "obtainium": RawResource(init_value = 100, b = 0.25, c = 0.2),
