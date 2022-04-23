@@ -3,7 +3,7 @@ import assets as a
 class Investor:
     def __init__(self):
         self.portfolio = a.AssetPortfolio()
-        self.production = {name: 0 for name in self.portfolio.productive_assets}
+        self.production = {name: 0 for name, asset in self.portfolio.productive_assets.items() if asset.recipe}
     
     def mass_produce(self):
         """Produces items in quantities specified by self.production"""
@@ -34,8 +34,6 @@ class Investor:
             recipe = asset.recipe
             revenue = asset.get_price() * prod_qty
             income_info[name] = {"revenue": revenue}
-            if recipe is None:
-                continue
             for ingredient in recipe:
                 price = self.productive_assets[ingredient.name].get_price()
                 cost = price * ingredient.qty * prod_qty

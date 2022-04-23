@@ -65,7 +65,7 @@ class ProductiveAsset(GARCH):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.recipe: list = None
+        self.recipe: list = []
         self._qty: int = 0
     
     @property
