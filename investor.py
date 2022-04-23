@@ -20,7 +20,7 @@ class Investor:
             total += (asset.qty * asset.get_price())
         return total
     
-    def income(self) -> dict(str, dict(str, float)):
+    def income(self) -> dict[str, dict[str, float]]:
         """Income from mass_produce() based on current prices"""
         income_info = {}
         # {

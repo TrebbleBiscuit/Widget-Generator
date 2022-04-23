@@ -86,49 +86,21 @@ class ProductiveAsset(GARCH):
 
 class RawResource(ProductiveAsset):
     """Raw resources are consumed to produce other products"""
-    def __init__(self):
-        super().__init__()
-
-class Obtainium(RawResource):
-    def __init__(self):
-        super().__init__(init_value = 100, b = 0.25, c = 0.2)
-
-class Eludium(RawResource):
-    def __init__(self):
-        super().__init__(init_value = 500, b = 0.35, c = 0.25)
-
-# class Unobtainium(RawResource):
-#     def __init__(self):
-#         super().__init__(init_value = 20000, b = 0.4, c = 0.4)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class IntermediateProduct(ProductiveAsset):
     """Intermediate products are created from some products and consumed by others"""
-    def __init__(self):
-        super().__init__()
-
-class Widget(IntermediateProduct):
-    def __init__(self):
-        super().__init__()
-        self.recipe = [AssetQty("obtanium", 2), AssetQty("eludium", 1)]
-
-# class Gizmo(IntermediateProduct):
-#     def __init__(self):
-#         super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 class FinalGood(ProductiveAsset):
     """Final goods are consuemd """
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-# class Doohickey(FinalGood):
-#     def __init__(self):
-#         super().__init__()
-
-# class Gadget(FinalGood):
-#     def __init__(self):
-#         super().__init__()
 
 my_asset = ProductiveAsset(b = 0.25, c = 0.2)
 my_asset.gen_price_figure(0, 21600)
