@@ -7,10 +7,9 @@ class Investor:
     
     def mass_produce(self):
         """Produces items in quantities specified by self.production"""
-        for asset_name in self.portfolio.productive_assets:
-            qty = self.production[asset_name]
+        for asset_name, qty in self.production.items():
             try:
-                self.portfolio.purchase_asset(asset_name=asset_name, qty=qty)
+                self.portfolio.buy_asset(asset_name=asset_name, qty=qty)
             except a.InsufficientResources as exc:
                 print(exc)
     
@@ -34,7 +33,9 @@ class Investor:
             recipe = asset.recipe
             revenue = asset.get_price() * prod_qty
             income_info[name] = {"revenue": revenue}
-            for ingredient in recipe:
+            if not recipe:
+                continue
+            for ingredient in recipe.ingredients:
                 price = self.productive_assets[ingredient.name].get_price()
                 cost = price * ingredient.qty * prod_qty
                 income_info[name]["cost"] = cost
