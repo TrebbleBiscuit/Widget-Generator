@@ -48,26 +48,6 @@ class AssetPortfolio():
         self.money += (asset.get_price() * qty)
         self.productive_assets[asset_name].qty -= qty
 
-    def produce_asset(self, asset_name: str, qty: int):
-        """produce a particular asset, consuming stockpiled resources
-        TODO: buy them at current market price, maybe every resource has an autobuy setting?
-        """
-        if qty == 0:
-            return
-        recipe = self.productive_assets[asset_name].recipe
-        if not recipe:
-            raise NoRecipe(f"No recipe for {asset_name}")
-        # check to ensure we have sufficient material to produce
-        # we need to check all resources before spending any of them
-        for ingredient in recipe.ingredients:
-            asset = self.productive_assets[ingredient.name]
-            if asset.qty < (ingredient.qty * qty):
-                raise InsufficientResources("Insufficient {ingredient.name} to produce {asset_name}")
-        # then produce
-        for ingredient in recipe.ingredients:
-            self.productive_assets[ingredient.name].qty -= ingredient.qty
-        self.productive_assets[asset_name].qty += qty
-
         
 
 
@@ -97,10 +77,18 @@ class ProductiveAsset(GARCH):
         pass
         # self.par_value = self._price_history[period-1]
 
-class Recipe():
-    def __init__(self, ingredients: list, time: int):
+class Recipe:
+    def __init__(self, product:str, ingredients: list, time: int):
+        self.product = product
         self.ingredients = ingredients
         self.time = time
+    
+    def __str__(self):
+        return str({
+            "product": self.product,
+            "ingredients": self.ingredients,
+            "time": self.time,
+        })
 
 class RawResource(ProductiveAsset):
     """Raw resources are consumed to produce other products"""
@@ -129,13 +117,13 @@ class Widget(IntermediateProduct):
     def __init__(self):
         super().__init__(init_value = 1000, b = 0.25, c = 0.2)
         # base cost = 200 + 500 = 700
-        self.recipe = Recipe([AssetQty("obtainium", 2), AssetQty("eludium", 1)], 5)
+        self.recipe = Recipe("widget", [AssetQty("obtainium", 2), AssetQty("eludium", 1)], 5)
 
 class Gizmo(IntermediateProduct):
     def __init__(self):
         super().__init__(init_value = 3500, b = 0.35, c = 0.25)
         # base cost = 1100 + 1500 = 2600
-        self.recipe = Recipe([AssetQty("obtainium", 11), AssetQty("eludium", 3)], 15)
+        self.recipe = Recipe("gizmo", [AssetQty("obtainium", 11), AssetQty("eludium", 3)], 15)
 
 
 class FinalGood(ProductiveAsset):
@@ -147,13 +135,13 @@ class Doohickey(FinalGood):
     def __init__(self):
         super().__init__(init_value = 10000, b = 0.25, c = 0.2)
         # base cost = 2000 + 2000 + 3500 = 7500
-        self.recipe = Recipe([AssetQty("obtainium", 20), AssetQty("eludium", 4), AssetQty("widget", 1)], 60)
+        self.recipe = Recipe("doohickey", [AssetQty("obtainium", 20), AssetQty("eludium", 4), AssetQty("widget", 1)], 60)
 
 class Gadget(FinalGood):
     def __init__(self):
         super().__init__(init_value = 50000, b = 0.35, c = 0.25)
         # base cost = 5500 + 20000 + 6000 + 7000 = 38500
-        self.recipe = Recipe([AssetQty("eludium", 11), AssetQty("unobtainium", 1), AssetQty("widget", 6), AssetQty("gizmo", 2)], 300)
+        self.recipe = Recipe("gadget", [AssetQty("eludium", 11), AssetQty("unobtainium", 1), AssetQty("widget", 6), AssetQty("gizmo", 2)], 300)
 
 if __name__ == "__main__":
     my_asset = ProductiveAsset(b = 0.25, c = 0.2)

@@ -13,6 +13,7 @@ class Game:
                 # update all asset prices to current period
                 asset.get_price(period = self.current_period)
             self.investor.mass_produce()
+            self.investor.increment_prod_queue()
 
 if __name__ == "__main__":
     print("hello world")
@@ -21,6 +22,9 @@ if __name__ == "__main__":
     print(f"Money: {game.investor.portfolio.money}")
     game.investor.portfolio.buy_asset("obtainium", 2)
     game.investor.portfolio.buy_asset("eludium", 1)
-    game.investor.portfolio.produce_asset("widget", 1)
+    game.investor.produce_asset("widget", 1)
+    print(f"Queue: {game.investor.prod_queue}")
+    game.increment_time(5)
+    print(f"Queue: {game.investor.prod_queue}")
     game.investor.portfolio.sell_asset("widget", 1)
     print(f"Money: {game.investor.portfolio.money}")
