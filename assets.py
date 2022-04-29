@@ -26,6 +26,10 @@ class AssetPortfolio():
             "gadget": Gadget()
         }
     
+    def get_portfolio_info(self) -> dict:
+        pi = {label: asset.qty for label, asset in self.productive_assets.items()}
+        pi["money"] = self.money
+        return pi
     
     def buy_asset(self, asset_name: str, qty: int):
         """Purchase a number of assets at the current market price"""
@@ -34,7 +38,7 @@ class AssetPortfolio():
         asset = self.productive_assets[asset_name]
         price = asset.get_price()
         if self.money < price * qty:
-            raise InsufficientResources("Not enough money to purchase {qty}x {asset_name}")
+            raise InsufficientResources(f"Not enough money to purchase {qty}x {asset_name}")
         self.money -= (price * qty)
         self.productive_assets[asset_name].qty += qty
     
@@ -82,13 +86,6 @@ class Recipe:
         self.product = product
         self.ingredients = ingredients
         self.time = time
-    
-    def __str__(self):
-        return str({
-            "product": self.product,
-            "ingredients": self.ingredients,
-            "time": self.time,
-        })
 
 class RawResource(ProductiveAsset):
     """Raw resources are consumed to produce other products"""

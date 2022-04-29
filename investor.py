@@ -20,7 +20,7 @@ class Investor:
         for ingredient in recipe.ingredients:
             asset = self.portfolio.productive_assets[ingredient.name]
             if asset.qty < (ingredient.qty * qty):
-                raise a.InsufficientResources("Insufficient {ingredient.name} to produce {asset_name}")
+                raise a.InsufficientResources(f"Insufficient {ingredient.name} to produce {asset_name}")
         # then spend
         for ingredient in recipe.ingredients:
             self.portfolio.productive_assets[ingredient.name].qty -= ingredient.qty
@@ -40,6 +40,9 @@ class Investor:
             self.portfolio.productive_assets[recipe.product].qty += 1
         else:
             recipe.time -= 1
+    
+    def get_prod_queue(self):
+        return str(self.prod_queue)
     
     def mass_produce(self):
         """Produces items in quantities specified by self.production"""
